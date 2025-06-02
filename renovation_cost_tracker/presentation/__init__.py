@@ -13,18 +13,9 @@ Structure:
 - schemas.py - Pydantic models for request/response
 """
 
+# Import only the dependency container to avoid circular imports
 from .dependencies import DependencyContainer
-from .schemas import (
-    ExpenseCreate, ExpenseUpdate, ExpenseOut,
-    ProjectCreate, ProjectOut,
-    UserCreate, UserOut,
-    Token
-)
 
 __all__ = [
-    "DependencyContainer",
-    "ExpenseCreate", "ExpenseUpdate", "ExpenseOut",
-    "ProjectCreate", "ProjectOut", 
-    "UserCreate", "UserOut",
-    "Token"
+    "DependencyContainer"
 ]
