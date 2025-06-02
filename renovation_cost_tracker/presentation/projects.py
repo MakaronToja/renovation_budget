@@ -4,7 +4,6 @@ from typing import List
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel, Field
 
 from renovation_cost_tracker.application.services import ProjectService, ExpenseService
 from renovation_cost_tracker.presentation.dependencies import (
@@ -12,81 +11,47 @@ from renovation_cost_tracker.presentation.dependencies import (
     get_expense_service,
     get_current_active_user
 )
-from renovation_cost_tracker.domain.models import User, Project, Money
+from renovation_cost_tracker.domain.models import User, Project
+from renovation_cost_tracker.presentation.schemas import (
+    ProjectCreate, ProjectOut, MoneySchema
+)
 
 
 router = APIRouter()
 
 
-# Pydantic schemas
-class MoneySchema(BaseModel):
-    """Money value object schema"""
-    amount: Decimal = Field(..., description="Amount in decimal format", example=10000.50)
-    currency: str = Field(default="PLN", description="Currency code", example="PLN")
-
-
-class ProjectCreate(BaseModel):
-    """Project creation request schema"""
-    name: str = Field(..., min_length=1, max_length=255, description="Project name", example="Bathroom Renovation")
-    budget: Decimal = Field(..., gt=0, description="Project budget amount", example=15000.00)
-    currency: str = Field(default="PLN", description="Budget currency", example="PLN")
+class ProjectSummary(ProjectOut):
+    """Extended project summary with financial analytics"""
+    budget_utilization_percent: float
+    by_category: dict
     
-    class Config:
-        json_schema_extra = {
+    model_config = {
+        "json_schema_extra": {
             "example": {
+                "id": "123e4567-e89b-12d3-a456-426614174000",
                 "name": "Kitchen Renovation",
-                "budget": 20000.50,
-                "currency": "PLN"
-            }
-        }
-
-
-class ProjectResponse(BaseModel):
-    """Project response schema"""
-    id: str
-    name: str
-    budget: MoneySchema
-    created_at: datetime
-    total_cost: MoneySchema
-    remaining_budget: MoneySchema
-    expense_count: int = 0
-    
-    class Config:
-        from_attributes = True
-
-
-class ProjectSummary(BaseModel):
-    """Project financial summary schema"""
-    total_cost: MoneySchema
-    budget: MoneySchema
-    remaining_budget: MoneySchema
-    budget_utilization_percent: float = Field(..., description="Percentage of budget used")
-    by_category: dict = Field(..., description="Costs grouped by category")
-    expense_count: int
-    
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "total_cost": {"amount": 8500.75, "currency": "PLN"},
                 "budget": {"amount": 15000.00, "currency": "PLN"},
+                "created_at": "2024-01-15T10:30:00Z",
+                "total_cost": {"amount": 8500.75, "currency": "PLN"},
                 "remaining_budget": {"amount": 6499.25, "currency": "PLN"},
+                "expense_count": 12,
                 "budget_utilization_percent": 56.67,
                 "by_category": {
                     "MATERIAL": {"amount": 5500.00, "currency": "PLN"},
                     "LABOR": {"amount": 3000.75, "currency": "PLN"}
-                },
-                "expense_count": 12
+                }
             }
         }
+    }
 
 
-def project_to_response(project: Project) -> ProjectResponse:
+def project_to_response(project: Project) -> ProjectOut:
     """Convert Project entity to response schema"""
-    return ProjectResponse(
-        id=str(project.id),
+    return ProjectOut(
+        id=project.id,
         name=project.name,
         budget=MoneySchema(amount=project.budget.amount, currency=project.budget.currency),
-        created_at=project.created_at,
+        created_at=project.created_at.isoformat(),
         total_cost=MoneySchema(amount=project.total_cost.amount, currency=project.total_cost.currency),
         remaining_budget=MoneySchema(
             amount=project.remaining_budget().amount,
@@ -98,7 +63,7 @@ def project_to_response(project: Project) -> ProjectResponse:
 
 @router.post(
     "/",
-    response_model=ProjectResponse,
+    response_model=ProjectOut,
     status_code=status.HTTP_201_CREATED,
     summary="Create new project",
     description="Create a new renovation project with name and budget"
@@ -154,7 +119,7 @@ async def create_project(
 
 @router.get(
     "/",
-    response_model=List[ProjectResponse],
+    response_model=List[ProjectOut],
     summary="List user projects",
     description="Get list of all projects belonging to the current user"
 )
@@ -186,7 +151,7 @@ async def list_user_projects(
 
 @router.get(
     "/{project_id}",
-    response_model=ProjectResponse,
+    response_model=ProjectOut,
     summary="Get project details",
     description="Get detailed information about a specific project"
 )
@@ -229,7 +194,7 @@ async def get_project_details(
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to get project summary"
+            detail="Failed to get project details"
         )
 
 
@@ -283,25 +248,35 @@ async def get_project_summary(
         # Convert Money objects in category breakdown to schema format
         by_category = {}
         for category, money in summary_data["by_category"].items():
-            by_category[category.value] = MoneySchema(
-                amount=money.amount,
-                currency=money.currency
-            )
+            by_category[category.value] = {
+                "amount": money.amount,
+                "currency": money.currency
+            }
+        
+        # Create response using the base project response plus summary fields
+        base_response = project_to_response(project)
         
         return ProjectSummary(
-            total_cost=MoneySchema(
-                amount=summary_data["total_cost"].amount,
-                currency=summary_data["total_cost"].currency
-            ),
-            budget=MoneySchema(
-                amount=summary_data["budget"].amount,
-                currency=summary_data["budget"].currency
-            ),
-            remaining_budget=MoneySchema(
-                amount=summary_data["remaining_budget"].amount,
-                currency=summary_data["remaining_budget"].currency
-            ),
+            id=base_response.id,
+            name=base_response.name,
+            budget=base_response.budget,
+            created_at=base_response.created_at,
+            total_cost=base_response.total_cost,
+            remaining_budget=base_response.remaining_budget,
+            expense_count=base_response.expense_count,
             budget_utilization_percent=round(budget_utilization, 2),
-            by_category=by_category,
-            expense_count=summary_data["expense_count"]
+            by_category=by_category
+        )
+        
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Project not found"
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to get project summary"
         )
