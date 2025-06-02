@@ -1,0 +1,127 @@
+@startuml
+title Diagram klas – Renovation Cost Tracker
+skinparam style strictuml
+
+package "Domain" <<Layer>> {
+  enum Category {
+    MATERIAL
+    LABOR
+    PERMIT
+    OTHER
+  }
+
+  class Money <<ValueObject>> {
+    +amount: Decimal
+    +currency: str
+    +__add__()
+    +__sub__()
+  }
+
+  class User <<Entity>> {
+    +id: UUID
+    +email: str
+    +passwordHash: str
+    +createdAt: datetime
+    +register()
+    +login(pwd)
+  }
+
+  class Project <<Entity>> {
+    +id: UUID
+    +userId: UUID
+    +name: str
+    +budget: Money
+    +createdAt: datetime
+    +totalCost: Money
+    +addExpense(e)
+    +remainingBudget()
+  }
+
+  class Expense <<Entity>> {
+    +id: UUID
+    +projectId: UUID
+    +category: Category
+    +amount: Money
+    +vendor: str
+    +date: date
+    +description: str
+  }
+}
+
+package "Application" <<Layer>> {
+  interface IUserRepository <<Repository>> {
+    +save(u)
+    +get(id)
+    +findByEmail(email)
+  }
+  interface IProjectRepository <<Repository>> {
+    +save(p)
+    +get(id)
+    +listByUser(uId)
+  }
+  interface IExpenseRepository <<Repository>> {
+    +save(e)
+    +get(id)
+    +listByProject(pId)
+  }
+
+  class ExpenseService <<Service>> {
+    +recordExpense(projectId,data)
+    +listExpenses(projectId,filter)
+    +summarize(projectId)
+  }
+
+  class AuthService <<Service>> {
+    +register(email,pwd)
+    +login(email,pwd)
+    +createToken(user)
+  }
+}
+
+package "Infrastructure" <<Layer>> {
+  class PostgresUserRepository <<Repository>> {
+    +db: Database
+  }
+  class PostgresProjectRepository <<Repository>> {
+    +db: Database
+  }
+  class PostgresExpenseRepository <<Repository>> {
+    +db: Database
+  }
+  class Database {
+    +engine: SQLAlchemy Engine
+  }
+}
+
+package "Presentation" <<Layer>> {
+  class ExpenseDTO <<DTO>> {
+    +id: UUID
+    +category: str
+    +amount: float
+    +vendor: str
+    +date: date
+    +description: str
+  }
+  class Mapper <<Mapper>> {
+    +toExpenseDTO(e): ExpenseDTO
+    +toExpense(dto): Expense
+  }
+}
+
+User "1" -- "0..*" Project
+Project "1" -- "0..*" Expense
+
+ExpenseService ..> IExpenseRepository
+ExpenseService ..> IProjectRepository
+
+AuthService ..> IUserRepository
+
+IUserRepository <|.. PostgresUserRepository
+IProjectRepository <|.. PostgresProjectRepository
+IExpenseRepository <|.. PostgresExpenseRepository
+
+Database <-- PostgresUserRepository
+Database <-- PostgresProjectRepository
+Database <-- PostgresExpenseRepository
+
+@enduml

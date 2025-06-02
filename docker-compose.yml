@@ -1,0 +1,18 @@
+version: "3.9"
+services:
+  api:
+    build: .
+    command: uvicorn renovation_cost_tracker.main:create_app --host 0.0.0.0 --port 8000 --reload
+    ports: ["8000:8000"]
+    env_file: .env
+    depends_on: [db]
+  db:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: renovation
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: pass
+    volumes:
+      - db-data:/var/lib/postgresql/data
+volumes:
+  db-data:

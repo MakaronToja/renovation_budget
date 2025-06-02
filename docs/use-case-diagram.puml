@@ -1,0 +1,15 @@
+@startuml
+left to right direction
+actor User
+rectangle API {
+  User -- (Register)
+  User -- (Login)
+  User -- (Create project)
+  User -- (Add expense)
+  User -- (Edit expense)
+  User -- (Delete expense)
+  User -- (List expenses)
+  User -- (Get summaries)
+  User -- (Export CSV)
+}
+@enduml
