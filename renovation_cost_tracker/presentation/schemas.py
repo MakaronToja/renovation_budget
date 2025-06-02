@@ -9,7 +9,7 @@ from pydantic import BaseModel, EmailStr, Field, validator
 from renovation_cost_tracker.domain.models import Expense, Category as DomainCategory
 
 
-class Category(str, Enum):
+class ExpenseCategory(str, Enum):
     """
     Expense category enumeration for API schemas.
     
@@ -46,7 +46,7 @@ class MoneySchema(BaseModel):
 class ExpenseBase(BaseModel):
     """Base expense schema with common fields"""
     amount: Decimal = Field(..., gt=0, description="Expense amount (must be positive)", example=1500.50)
-    category: Category = Field(..., description="Expense category", example=Category.MATERIAL)
+    category: ExpenseCategory = Field(..., description="Expense category", example=ExpenseCategory.MATERIAL)
     vendor: str = Field(..., min_length=1, max_length=255, description="Vendor or supplier name", example="BuildMart")
     date: date = Field(..., description="Expense date", example="2024-01-15")
     description: Optional[str] = Field(None, max_length=500, description="Optional expense description", example="Bathroom tiles and fixtures")
@@ -101,7 +101,7 @@ class ExpenseUpdate(BaseModel):
     Used in PUT /expenses/{id} endpoint.
     """
     amount: Optional[Decimal] = Field(None, gt=0, description="New expense amount")
-    category: Optional[Category] = Field(None, description="New expense category")
+    category: Optional[ExpenseCategory] = Field(None, description="New expense category")
     vendor: Optional[str] = Field(None, min_length=1, max_length=255, description="New vendor name")
     date: Optional[date] = Field(None, description="New expense date")
     description: Optional[str] = Field(None, max_length=500, description="New expense description")
@@ -323,7 +323,7 @@ class Token(BaseModel):
 # Summary and analytics schemas
 class CategorySummary(BaseModel):
     """Summary statistics for a specific category"""
-    category: Category = Field(..., description="Expense category")
+    category: ExpenseCategory = Field(..., description="Expense category")
     total_amount: MoneySchema = Field(..., description="Total amount for this category")
     expense_count: int = Field(..., description="Number of expenses in this category")
     percentage: float = Field(..., description="Percentage of total project cost")
@@ -401,7 +401,7 @@ class Mapper:
         return ExpenseOut(
             id=expense.id,
             amount=expense.amount.amount,
-            category=Category(expense.category.value),
+            category=ExpenseCategory(expense.category.value),
             vendor=expense.vendor,
             date=expense.date,
             description=expense.description
