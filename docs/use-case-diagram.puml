@@ -1,15 +1,94 @@
 @startuml
+!define RECTANGLE class
+
+title Renovation Cost Tracker - Use Case Diagram
 left to right direction
-actor User
-rectangle API {
-  User -- (Register)
-  User -- (Login)
-  User -- (Create project)
-  User -- (Add expense)
-  User -- (Edit expense)
-  User -- (Delete expense)
-  User -- (List expenses)
-  User -- (Get summaries)
-  User -- (Export CSV)
+
+actor "User" as user
+actor "System Admin" as admin
+
+rectangle "Authentication System" {
+  usecase "Register Account" as UC1
+  usecase "Login to System" as UC2
+  usecase "Logout" as UC3
 }
+
+rectangle "Project Management" {
+  usecase "Create Project" as UC4
+  usecase "View Project List" as UC5
+  usecase "View Project Details" as UC6
+  usecase "Edit Project" as UC7
+  usecase "Delete Project" as UC8
+}
+
+rectangle "Expense Management" {
+  usecase "Add Expense" as UC9
+  usecase "Edit Expense" as UC10
+  usecase "Delete Expense" as UC11
+  usecase "View Expense List" as UC12
+  usecase "Filter Expenses" as UC13
+  usecase "Search Expenses" as UC14
+}
+
+rectangle "Reporting & Analytics" {
+  usecase "View Project Summary" as UC15
+  usecase "Generate Cost Report" as UC16
+  usecase "View Budget Status" as UC17
+  usecase "Export to CSV" as UC18
+}
+
+rectangle "System Administration" {
+  usecase "Monitor System Health" as UC19
+  usecase "Manage Users" as UC20
+  usecase "View System Logs" as UC21
+}
+
+' User relationships
+user --> UC1
+user --> UC2
+user --> UC3
+user --> UC4
+user --> UC5
+user --> UC6
+user --> UC7
+user --> UC8
+user --> UC9
+user --> UC10
+user --> UC11
+user --> UC12
+user --> UC13
+user --> UC14
+user --> UC15
+user --> UC16
+user --> UC17
+user --> UC18
+
+' Admin relationships  
+admin --> UC19
+admin --> UC20
+admin --> UC21
+
+' Dependencies
+UC4 ..> UC2 : <<requires>>
+UC5 ..> UC2 : <<requires>>
+UC6 ..> UC2 : <<requires>>
+UC7 ..> UC2 : <<requires>>
+UC8 ..> UC2 : <<requires>>
+UC9 ..> UC2 : <<requires>>
+UC9 ..> UC6 : <<requires>>
+UC10 ..> UC2 : <<requires>>
+UC11 ..> UC2 : <<requires>>
+UC12 ..> UC2 : <<requires>>
+UC13 ..> UC12 : <<extends>>
+UC14 ..> UC12 : <<extends>>
+UC15 ..> UC6 : <<requires>>
+UC16 ..> UC2 : <<requires>>
+UC17 ..> UC6 : <<requires>>
+UC18 ..> UC12 : <<requires>>
+
+note right of UC1 : "Email validation\nPassword strength requirements"
+note right of UC9 : "Amount, category, vendor,\ndate, description"
+note right of UC13 : "By date range, category,\nvendor, amount range"
+note right of UC18 : "Filtered expense data\nin CSV format"
+
 @enduml
